@@ -1,78 +1,114 @@
 // App.js
 import React, { useState } from 'react';
-import LandingPage from './components/LandingPage';
-import UsersPage from './components/UsersPage';
-import NotificationsPage from './components/NotificationsPage';
-import CreatePost from './components/CreatePost';
-import './App.css';
+import ProductList from './components/ProductList';
+import Cart from './components/Cart';
 
 function App() {
-  const [users, setUsers] = useState([
-    { id: 1, name: 'John Doe' },
-    { id: 2, name: 'Jane Smith' }
+  const [products, setProducts] = useState([
+    { id: 1, name: 'Laptop', price: 999.99, quantity: 10 },
+    { id: 2, name: 'Smartphone', price: 599.99, quantity: 15 },
+    { id: 3, name: 'Headphones', price: 199.99, quantity: 20 }
   ]);
 
-  const [posts, setPosts] = useState([]);
-  const [notifications, setNotifications] = useState([]);
+  const [cart, setCart] = useState([]);
 
-  const handleCreatePost = (postData) => {
-    const newPost = {
-      id: posts.length + 1,
-      ...postData,
-      reactions: 0,
-      timestamp: new Date()
-    };
-    setPosts([...posts, newPost]);
+  const addToCart = (product) => {
+    const existingCartItem = cart.find(item => item.id === product.id);
     
-    // Add notification
-    const notification = {
-      id: notifications.length + 1,
-      message: `New post created by ${postData.author}`
-    };
-    setNotifications([...notifications, notification]);
+    if (existingCartItem) {
+      setCart(cart.map(item => 
+        item.id === product.id 
+          ? { ...item, quantity: item.quantity + 1 } 
+          : item
+      ));
+    } else {
+      setCart([...cart, { ...product, quantity: 1 }]);
+    }
+
+    // Reduce product inventory
+    setProducts(products.map(p => 
+      p.id === product.id 
+        ? { ...p, quantity: p.quantity - 1 } 
+        : p
+    ));
   };
 
-  const handleEditPost = (postId, updatedPost) => {
-    const updatedPosts = posts.map(post => 
-      post.id === postId ? { ...post, ...updatedPost } : post
-    );
-    setPosts(updatedPosts);
+  const removeFromCart = (productId) => {
+    const cartItem = cart.find(item => item.id === productId);
+    
+    // Restore product inventory
+    setProducts(products.map(p => 
+      p.id === productId 
+        ? { ...p, quantity: p.quantity + cartItem.quantity } 
+        : p
+    ));
 
-    // Add notification
-    const notification = {
-      id: notifications.length + 1,
-      message: `Post edited by ${updatedPost.author}`
-    };
-    setNotifications([...notifications, notification]);
+    // Remove item from cart
+    setCart(cart.filter(item => item.id !== productId));
   };
 
-  const handleReactToPost = (postId) => {
-    const updatedPosts = posts.map(post => 
-      post.id === postId 
-        ? { ...post, reactions: (post.reactions || 0) + 1 } 
-        : post
-    );
-    setPosts(updatedPosts);
+  const updateCartItemQuantity = (productId, newQuantity) => {
+    const cartItem = cart.find(item => item.id === productId);
+    const quantityDifference = newQuantity - cartItem.quantity;
+
+    // Update cart item quantity
+    setCart(cart.map(item => 
+      item.id === productId 
+        ? { ...item, quantity: newQuantity } 
+        : item
+    ));
+
+    // Update product inventory
+    setProducts(products.map(p => 
+      p.id === productId 
+        ? { ...p, quantity: p.quantity - quantityDifference } 
+        : p
+    ));
   };
 
-  const refreshNotifications = () => {
-    // Simulate fetching new notifications
-    const newNotifications = [
-      { id: notifications.length + 1, message: 'New activity detected' }
-    ];
-    setNotifications([...notifications, ...newNotifications]);
+  const calculateTotal = () => {
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2);
   };
 
   return (
-    <div className="App">
-      <div className="tabs">
-        <LandingPage 
-          posts={posts} 
-          users={users}
-          onReactToPost={handleReactToPost}
-          onEditPost={handleEditPost}
+    <div className="App" data-testid="app">
+      <header>
+        <h1>Shopping Cart</h1>
+      </header>
+      
+      <div className="container">
+        <ProductList 
+          products={products} 
+          onAddToCart={addToCart} 
         />
-        <UsersPage 
-          users={users} 
-          posts={posts}
-        <span class="ml-2" /><span class="inline-block w-3 h-3 rounded-full bg-neutral-a12 align-middle mb-[0.1rem]" />
+        
+        <Cart 
+          cartItems={cart}
+          onRemoveFromCart={removeFromCart}
+          onUpdateQuantity={updateCartItemQuantity}
+          total={calculateTotal()}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default App;
+
+// ProductList.js
+import React from 'react';
+
+function ProductList({ products, onAddToCart }) {
+  return (
+    <div className="product-list" data-testid="product-list">
+      <h2>Products</h2>
+      {products.map(product => (
+        <div key={product.id} className="product-item" data-testid={`product-${product.id}`}>
+          <span>{product.name}</span>
+          <span>${product.price}</span>
+          <span>Stock: {product.quantity}</span>
+          <button 
+            onClick={() => onAddToCart(product)}
+            disabled={product.quantity === 0}
+            data-testid={`add-to-cart-${product.id}`}
+          <span class="ml-2" /><span class="inline-block w-3 h-3 rounded-full bg-neutral-a12 align-middle mb-[0.1rem]" />
